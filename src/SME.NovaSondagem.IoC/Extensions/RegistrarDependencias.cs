@@ -1,60 +1,52 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using SME.NovaSondagem.Infra.EnvironmentVariables;
 using SME.NovaSondagem.Infra.Interfaces;
 using SME.NovaSondagem.Infra.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace SME.NovaSondagem.IoC.Extensions
+namespace SME.NovaSondagem.IoC.Extensions;
+
+public static class RegistraDependencias
 {
-    public static class RegistraDependencias
+    public static void Registrar(IServiceCollection services, IConfiguration configuration)
     {
-        public static void Registrar(IServiceCollection services)
-        {
-            services.AdicionarMediatr();
-            services.AdicionarValidadoresFluentValidation();
-            services.AddPoliticas();
+        ConfigurarRabbitmq(services, configuration);
+        ConfigurarRabbitmqLog(services, configuration);
 
-            RegistrarServicos(services);
-            RegistrarRepositorios(services);
-            RegistrarRepositoriosSerap(services);
-            RegistrarRepositoriosCoresso(services);
-            RegistrarRepositoriosEol(services);
-            RegistrarCasosDeUso(services);
-        }
+        services.AdicionarValidadoresFluentValidation();
+        services.AddPoliticas();
 
-        private static void RegistrarServicos(IServiceCollection services)
-        {
-            services.TryAddSingleton<IServicoLog, ServicoLog>();
-            services.TryAddSingleton<IServicoMensageria, ServicoMensageria>();
-        }
+        RegistrarServicos(services, configuration);
+    }
 
-        private static void RegistrarRepositorios(IServiceCollection services)
-        {
-           
-        }
+    private static void RegistrarServicos(IServiceCollection services, IConfiguration configuration)
+    {
+        var telemetria = new TelemetriaOptions();
+        configuration.GetSection(TelemetriaOptions.Secao).Bind(telemetria, c => c.BindNonPublicProperties = true);
+        services.AddSingleton(telemetria);
 
-        private static void RegistrarRepositoriosEol(IServiceCollection services)
-        {
-            
-        }
+        services.AddSingleton(provider => provider.GetRequiredService<IOptions<TelemetriaOptions>>().Value);
 
-        private static void RegistrarRepositoriosCoresso(IServiceCollection services)
-        {
-            
-        }
+        services.TryAddScoped<IServicoTelemetria, ServicoTelemetria>();
+        services.TryAddScoped<IServicoLog, ServicoLog>();
+        services.TryAddSingleton<IServicoMensageria, ServicoMensageria>();
+        services.AddHttpClient();
+        services.AdicionarHttpClients(configuration);
+    }
 
-        private static void RegistrarRepositoriosSerap(IServiceCollection services)
-        {
-           
-        }
+    private static void ConfigurarRabbitmq(IServiceCollection services, IConfiguration configuration)
+    {
+        var rabbitOptions = new RabbitOptions();
+        configuration.GetSection(RabbitOptions.Secao).Bind(rabbitOptions, c => c.BindNonPublicProperties = true);
+        services.AddSingleton(rabbitOptions);
+    }
 
-        private static void RegistrarCasosDeUso(IServiceCollection services)
-        {
-           
-        }
+    private static void ConfigurarRabbitmqLog(IServiceCollection services, IConfiguration configuration)
+    {
+        var rabbitLogOptions = new RabbitLogOptions();
+        configuration.GetSection(RabbitLogOptions.Secao).Bind(rabbitLogOptions, c => c.BindNonPublicProperties = true);
+        services.AddSingleton(rabbitLogOptions);
     }
 }

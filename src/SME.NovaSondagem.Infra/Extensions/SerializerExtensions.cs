@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SME.NovaSondagem.Infra.Extensions
 {
@@ -9,7 +10,7 @@ namespace SME.NovaSondagem.Infra.Extensions
             return new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
-                IgnoreNullValues = true
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
             };
         }
 

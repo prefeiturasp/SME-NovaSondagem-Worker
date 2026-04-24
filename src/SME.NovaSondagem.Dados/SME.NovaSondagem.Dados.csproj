@@ -21,4 +21,9 @@
     <ProjectReference Include="..\SME.NovaSondagem.Infra\SME.NovaSondagem.Infra.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Interceptors\" />
+    <Folder Include="Repositories\Elastic\" />
+  </ItemGroup>
+
 </Project>
