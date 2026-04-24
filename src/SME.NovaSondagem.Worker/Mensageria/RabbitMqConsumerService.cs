@@ -45,7 +45,7 @@ public class RabbitMqConsumerService : BackgroundService
         await InicializaConsumerAsync(channel, stoppingToken);
     }
 
-    private void RegistrarUseCases()
+    private static void RegistrarUseCases()
     {
 
         //_comandos.Add(RotasRabbit.RelatorioSondagemPorTurma, new ComandoRabbit("Relatorio Sondagem Por Turma", typeof(IRelatorioSondagemQuestionarioPorTurmaUseCase)));
