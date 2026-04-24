@@ -1,214 +1,182 @@
-﻿using Elastic.Apm.Api;
-using Elastic.Apm;
-using Microsoft.ApplicationInsights;
+﻿using SME.NovaSondagem.Infra.EnvironmentVariables;
 using SME.NovaSondagem.Infra.Interfaces;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using SME.NovaSondagem.Infra.EnvironmentVariables;
 
-namespace SME.NovaSondagem.Infra.Services
+namespace SME.NovaSondagem.Infra.Services;
+
+public class ServicoTelemetria : IServicoTelemetria
 {
-    public class ServicoTelemetria : IServicoTelemetria
+    public static readonly ActivitySource SondagemActivitySource = new ActivitySource("SME.NovaSondagem.Worker");
+    private readonly TelemetriaOptions _telemetriaOptions;
+    private const string Excecao = "Exception";
+    private const string ExcecaoMenssagem = "exception.message";
+    private const string ExcecaoStacktrace = "exception.stacktrace";
+
+    public ServicoTelemetria(TelemetriaOptions telemetriaOptions)
     {
+        _telemetriaOptions = telemetriaOptions ?? throw new ArgumentNullException(nameof(telemetriaOptions));
+    }
 
-        private readonly TelemetriaOptions telemetriaOptions;
+    public ServicoTelemetriaTransacao IniciarTransacao(string rota)
+    {
+        var transacao = new ServicoTelemetriaTransacao(rota);
 
-        public ServicoTelemetria(TelemetriaOptions telemetriaOptions)
+        var activity = SondagemActivitySource.StartActivity(rota);
+        transacao.Activity = activity;
+        transacao.InicioOperacao = DateTime.UtcNow;
+        if (_telemetriaOptions.ApplicationInsights)
         {
-            this.telemetriaOptions = telemetriaOptions ?? throw new ArgumentNullException(nameof(telemetriaOptions));
-        }
-
-        public ServicoTelemetriaTransacao IniciarTransacao(string rota)
-        {
-            var transacao = new ServicoTelemetriaTransacao(rota);
-
-            if (telemetriaOptions.Apm)
-                transacao.TransacaoApm = Agent.Tracer.StartTransaction(rota, "WorkerRabbitSerap");
-
-            if (!telemetriaOptions.ApplicationInsights)
-                return transacao;
-
-            transacao.InicioOperacao = DateTime.UtcNow;
             transacao.Temporizador = Stopwatch.StartNew();
-            return transacao;
         }
 
-        public void FinalizarTransacao(ServicoTelemetriaTransacao servicoTelemetriaTransacao)
+        return transacao;
+    }
+
+    public void FinalizarTransacao(ServicoTelemetriaTransacao servicoTelemetriaTransacao)
+    {
+        if (servicoTelemetriaTransacao.Activity != null)
         {
-            if (telemetriaOptions.Apm)
-                servicoTelemetriaTransacao.TransacaoApm?.End();
+            servicoTelemetriaTransacao.Activity.SetStatus(ActivityStatusCode.Ok);
+            servicoTelemetriaTransacao.Activity.Stop();
         }
+        servicoTelemetriaTransacao.Temporizador?.Stop();
+    }
 
-        public void RegistrarExcecao(ServicoTelemetriaTransacao servicoTelemetriaTransacao, Exception ex)
+    public void RegistrarExcecao(ServicoTelemetriaTransacao servicoTelemetriaTransacao, Exception ex)
+    {
+        if (servicoTelemetriaTransacao.Activity != null)
         {
-            if (telemetriaOptions.Apm)
-                servicoTelemetriaTransacao.TransacaoApm?.CaptureException(ex);
+            servicoTelemetriaTransacao.Activity.SetStatus(ActivityStatusCode.Error, ex.Message);
+            servicoTelemetriaTransacao.Activity.AddEvent(new ActivityEvent(Excecao, tags: new ActivityTagsCollection { { ExcecaoMenssagem, ex.Message }, { ExcecaoStacktrace, ex.StackTrace } }));
         }
+    }
 
-        public async Task<dynamic> RegistrarComRetornoAsync<T>(Func<Task<object>> acao, string acaoNome,
-            string telemetriaNome, string telemetriaValor, string parametros)
+    public async Task<dynamic> RegistrarComRetornoAsync<T>(Func<Task<object>> acao, string acaoNome, string telemetriaNome, string telemetriaValor, string parametros)
+    {
+        using var activity = SondagemActivitySource.StartActivity(acaoNome);
+
+        activity?.SetTag(telemetriaNome, telemetriaValor);
+        if (!string.IsNullOrEmpty(parametros))
+            activity?.SetTag("parametros", parametros);
+
+        Stopwatch? temporizador = default;
+        if (_telemetriaOptions.ApplicationInsights)
+            temporizador = Stopwatch.StartNew();
+
+        try
         {
-            dynamic result;
-
-            DateTime inicioOperacao = default;
-            Stopwatch temporizador = default;
-
-            if (telemetriaOptions.ApplicationInsights)
-            {
-                inicioOperacao = DateTime.UtcNow;
-                temporizador = Stopwatch.StartNew();
-            }
-
-            if (telemetriaOptions.Apm)
-            {
-                var temporizadorApm = Stopwatch.StartNew();
-                result = await acao();
-                temporizadorApm.Stop();
-
-                Agent.Tracer.CurrentTransaction.CaptureSpan(telemetriaNome, acaoNome, span =>
-                {
-                    span.SetLabel(telemetriaNome, telemetriaValor);
-
-                    if (!string.IsNullOrEmpty(parametros))
-                        span.SetLabel("Parametros", parametros);
-
-                    span.Duration = temporizadorApm.Elapsed.TotalMilliseconds;
-                });
-            }
-            else
-                result = await acao();
-
-            if (!telemetriaOptions.ApplicationInsights || temporizador == null)
-                return result;
-
-            temporizador.Stop();
-
+            var result = await acao();
+            activity?.SetStatus(ActivityStatusCode.Ok);
             return result;
         }
-
-        public async Task<dynamic> RegistrarComRetornoAsync<T>(Func<Task<object>> acao, string acaoNome, string telemetriaNome, string telemetriaValor)
+        catch (Exception ex)
         {
-            return await RegistrarComRetornoAsync<T>(acao, acaoNome, telemetriaNome, telemetriaValor, null);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.AddEvent(new ActivityEvent(Excecao, tags: new ActivityTagsCollection { { ExcecaoMenssagem, ex.Message }, { ExcecaoStacktrace, ex.StackTrace } }));
+            throw;
         }
-
-        public dynamic RegistrarComRetorno<T>(Func<object> acao, string acaoNome, string telemetriaNome, string telemetriaValor)
+        finally
         {
-            dynamic result;
+            temporizador?.Stop();
+        }
+    }
 
-            DateTime inicioOperacao = default;
-            Stopwatch temporizador = default;
+    public async Task<dynamic> RegistrarComRetornoAsync<T>(Func<Task<object>> acao, string acaoNome, string telemetriaNome, string telemetriaValor)
+    {
+        return await RegistrarComRetornoAsync<T>(acao, acaoNome, telemetriaNome, telemetriaValor, string.Empty);
+    }
 
-            if (telemetriaOptions.ApplicationInsights)
-            {
-                inicioOperacao = DateTime.UtcNow;
-                temporizador = Stopwatch.StartNew();
-            }
+    public dynamic RegistrarComRetorno<T>(Func<object> acao, string acaoNome, string telemetriaNome, string telemetriaValor)
+    {
+        using var activity = SondagemActivitySource.StartActivity(acaoNome);
+        activity?.SetTag(telemetriaNome, telemetriaValor);
 
-            if (telemetriaOptions.Apm)
-            {
-                var temporizadorApm = Stopwatch.StartNew();
-                result = acao();
-                temporizadorApm.Stop();
+        Stopwatch? temporizador = default;
+        if (_telemetriaOptions.ApplicationInsights)
+            temporizador = Stopwatch.StartNew();
 
-                Agent.Tracer.CurrentTransaction.CaptureSpan(telemetriaNome, acaoNome, (span) =>
-                {
-                    span.SetLabel(telemetriaNome, telemetriaValor);
-                    span.Duration = temporizadorApm.Elapsed.TotalMilliseconds;
-                });
-            }
-            else
-                result = acao();
-
-            if (!telemetriaOptions.ApplicationInsights || temporizador == null)
-                return result;
-
-            temporizador.Stop();
-
+        try
+        {
+            var result = acao();
+            activity?.SetStatus(ActivityStatusCode.Ok);
             return result;
         }
-
-        public void Registrar(Action acao, string acaoNome, string telemetriaNome, string telemetriaValor)
+        catch (Exception ex)
         {
-            DateTime inicioOperacao = default;
-            Stopwatch temporizador = default;
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.AddEvent(new ActivityEvent(Excecao, tags: new ActivityTagsCollection { { ExcecaoMenssagem, ex.Message }, { ExcecaoStacktrace, ex.StackTrace } }));
+            throw;
+        }
+        finally
+        {
+            temporizador?.Stop();
+        }
+    }
 
-            if (telemetriaOptions.ApplicationInsights)
-            {
-                inicioOperacao = DateTime.UtcNow;
-                temporizador = Stopwatch.StartNew();
-            }
+    public void Registrar(Action acao, string acaoNome, string telemetriaNome, string telemetriaValor)
+    {
+        using var activity = SondagemActivitySource.StartActivity(acaoNome);
+        activity?.SetTag(telemetriaNome, telemetriaValor);
 
-            if (telemetriaOptions.Apm)
-            {
-                var temporizadorApm = Stopwatch.StartNew();
-                acao();
-                temporizadorApm.Stop();
+        Stopwatch? temporizador = default;
+        if (_telemetriaOptions.ApplicationInsights)
+            temporizador = Stopwatch.StartNew();
 
-                Agent.Tracer.CurrentTransaction.CaptureSpan(telemetriaNome, acaoNome, (span) =>
-                {
-                    span.SetLabel(telemetriaNome, telemetriaValor);
-                    span.Duration = temporizadorApm.Elapsed.TotalMilliseconds;
-                });
-            }
-            else
-                acao();
+        try
+        {
+            acao();
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.AddEvent(new ActivityEvent(Excecao, tags: new ActivityTagsCollection { { ExcecaoMenssagem, ex.Message }, { ExcecaoStacktrace, ex.StackTrace } }));
+            throw;
+        }
+        finally
+        {
+            temporizador?.Stop();
+        }
+    }
 
-            if (!telemetriaOptions.ApplicationInsights || temporizador == null)
-                return;
+    public async Task RegistrarAsync(Func<Task> acao, string acaoNome, string telemetriaNome, string telemetriaValor)
+    {
+        using var activity = SondagemActivitySource.StartActivity(acaoNome);
+        activity?.SetTag(telemetriaNome, telemetriaValor);
 
-            temporizador.Stop();
+        Stopwatch? temporizador = default;
+        if (_telemetriaOptions.ApplicationInsights)
+            temporizador = Stopwatch.StartNew();
+
+        try
+        {
+            await acao();
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.AddEvent(new ActivityEvent(Excecao, tags: new ActivityTagsCollection { { ExcecaoMenssagem, ex.Message }, { ExcecaoStacktrace, ex.StackTrace } }));
+            throw;
+        }
+        finally
+        {
+            temporizador?.Stop();
+        }
+    }
+
+    public class ServicoTelemetriaTransacao
+    {
+        public ServicoTelemetriaTransacao(string nome)
+        {
+            Nome = nome;
+            Sucesso = true;
         }
 
-        public async Task RegistrarAsync(Func<Task> acao, string acaoNome, string telemetriaNome, string telemetriaValor)
-        {
-            DateTime inicioOperacao = default;
-            Stopwatch temporizador = default;
-
-            if (telemetriaOptions.ApplicationInsights)
-            {
-                inicioOperacao = DateTime.UtcNow;
-                temporizador = Stopwatch.StartNew();
-            }
-
-            if (telemetriaOptions.Apm)
-            {
-                var temporizadorApm = Stopwatch.StartNew();
-                await acao();
-                temporizadorApm.Stop();
-
-                Agent.Tracer.CurrentTransaction.CaptureSpan(telemetriaNome, acaoNome, (span) =>
-                {
-                    span.SetLabel(telemetriaNome, telemetriaValor);
-                    span.Duration = temporizadorApm.Elapsed.TotalMilliseconds;
-                });
-            }
-            else
-                await acao();
-
-
-            if (telemetriaOptions.ApplicationInsights && temporizador != null)
-            {
-                temporizador.Stop();
-            }
-        }
-
-        public class ServicoTelemetriaTransacao
-        {
-            public ServicoTelemetriaTransacao(string nome)
-            {
-                Nome = nome;
-                Sucesso = true;
-            }
-
-            public string Nome { get; set; }
-            public ITransaction TransacaoApm { get; set; }
-            public DateTime InicioOperacao { get; set; }
-            public Stopwatch Temporizador { get; set; }
-            public bool Sucesso { get; set; }
-        }
+        public string Nome { get; set; }
+        public DateTime InicioOperacao { get; set; }
+        public Stopwatch? Temporizador { get; set; }
+        public bool Sucesso { get; set; }
+        public Activity? Activity { get; set; }
     }
 }

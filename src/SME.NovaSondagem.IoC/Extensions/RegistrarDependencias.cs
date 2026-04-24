@@ -14,6 +14,7 @@ public static class RegistraDependencias
     {
         ConfigurarRabbitmq(services, configuration);
         ConfigurarRabbitmqLog(services, configuration);
+        ConfigurarTelemetria(services, configuration);
 
         services.AdicionarValidadoresFluentValidation();
         services.AddPoliticas();
@@ -48,5 +49,15 @@ public static class RegistraDependencias
         var rabbitLogOptions = new RabbitLogOptions();
         configuration.GetSection(RabbitLogOptions.Secao).Bind(rabbitLogOptions, c => c.BindNonPublicProperties = true);
         services.AddSingleton(rabbitLogOptions);
+    }
+
+    private static void ConfigurarTelemetria(IServiceCollection services, IConfiguration configuration)
+    {
+        var telemetriaOptions = new TelemetriaOptions();
+        configuration.GetSection(TelemetriaOptions.Secao).Bind(telemetriaOptions, c => c.BindNonPublicProperties = true);
+        services.AddSingleton(telemetriaOptions);
+
+        var servicoTelemetria = new ServicoTelemetria(telemetriaOptions);
+        services.AddSingleton(servicoTelemetria);
     }
 }

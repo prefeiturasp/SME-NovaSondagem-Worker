@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Cache\" />
     <Folder Include="Dtos\" />
     <Folder Include="Utils\" />
   </ItemGroup>

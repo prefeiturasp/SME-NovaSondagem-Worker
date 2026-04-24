@@ -1,15 +1,10 @@
 ﻿using SME.NovaSondagem.Dominio.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SME.NovaSondagem.Dominio.Entities
 {
     public class LogMensagem
     {
-        public LogMensagem(string mensagem, LogNivel nivel, string observacao, string rastreamento = null, string excecaoInterna = null, string projeto = "Serap-Prova-Worker")
+        public LogMensagem(string mensagem, LogNivel nivel, string observacao, string rastreamento = null, string excecaoInterna = null, string projeto = "SME.NovaSondagem.Worker")
         {
             Mensagem = mensagem;
             Nivel = nivel;
