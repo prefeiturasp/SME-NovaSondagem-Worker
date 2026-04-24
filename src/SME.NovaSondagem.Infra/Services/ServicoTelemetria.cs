@@ -59,7 +59,7 @@ public class ServicoTelemetria : IServicoTelemetria
         if (!string.IsNullOrEmpty(parametros))
             activity?.SetTag("parametros", parametros);
 
-        Stopwatch? temporizador = default;
+        Stopwatch temporizador = default;
         if (_telemetriaOptions.ApplicationInsights)
             temporizador = Stopwatch.StartNew();
 
@@ -91,7 +91,7 @@ public class ServicoTelemetria : IServicoTelemetria
         using var activity = SondagemActivitySource.StartActivity(acaoNome);
         activity?.SetTag(telemetriaNome, telemetriaValor);
 
-        Stopwatch? temporizador = default;
+        Stopwatch temporizador = default;
         if (_telemetriaOptions.ApplicationInsights)
             temporizador = Stopwatch.StartNew();
 
@@ -118,7 +118,7 @@ public class ServicoTelemetria : IServicoTelemetria
         using var activity = SondagemActivitySource.StartActivity(acaoNome);
         activity?.SetTag(telemetriaNome, telemetriaValor);
 
-        Stopwatch? temporizador = default;
+        Stopwatch temporizador = default;
         if (_telemetriaOptions.ApplicationInsights)
             temporizador = Stopwatch.StartNew();
 
@@ -144,7 +144,7 @@ public class ServicoTelemetria : IServicoTelemetria
         using var activity = SondagemActivitySource.StartActivity(acaoNome);
         activity?.SetTag(telemetriaNome, telemetriaValor);
 
-        Stopwatch? temporizador = default;
+        Stopwatch temporizador = default;
         if (_telemetriaOptions.ApplicationInsights)
             temporizador = Stopwatch.StartNew();
 
@@ -175,8 +175,8 @@ public class ServicoTelemetria : IServicoTelemetria
 
         public string Nome { get; set; }
         public DateTime InicioOperacao { get; set; }
-        public Stopwatch? Temporizador { get; set; }
+        public Stopwatch Temporizador { get; set; }
         public bool Sucesso { get; set; }
-        public Activity? Activity { get; set; }
+        public Activity Activity { get; set; }
     }
 }

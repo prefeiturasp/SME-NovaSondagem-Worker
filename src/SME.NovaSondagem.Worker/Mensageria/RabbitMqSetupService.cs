@@ -19,10 +19,10 @@ public class RabbitMqSetupService : IRabbitMqSetupService
     {
         var factory = new ConnectionFactory
         {
-            HostName = _rabbitOptions?.HostName ?? string.Empty,
-            UserName = _rabbitOptions?.UserName ?? string.Empty,
-            Password = _rabbitOptions?.Password ?? string.Empty,
-            VirtualHost = _rabbitOptions?.VirtualHost ?? string.Empty
+            HostName = _rabbitOptions.HostName ?? string.Empty,
+            UserName = _rabbitOptions.UserName ?? string.Empty,
+            Password = _rabbitOptions.Password ?? string.Empty,
+            VirtualHost = _rabbitOptions.VirtualHost ?? string.Empty
         };
 
         return await factory.CreateConnectionAsync(stoppingToken);
@@ -65,7 +65,7 @@ public class RabbitMqSetupService : IRabbitMqSetupService
 
             await channel.QueueBindAsync(filaDeadLetter, ExchangeRabbit.NovaSondagemDeadLetter, fila, null);
 
-            var argsFinal = new Dictionary<string, object?> { { "x-queue-mode", "lazy" } };
+            var argsFinal = new Dictionary<string, object> { { "x-queue-mode", "lazy" } };
 
             await channel.QueueDeclareAsync(
                 queue: filaDeadLetterFinal,
@@ -78,21 +78,21 @@ public class RabbitMqSetupService : IRabbitMqSetupService
         }
     }
 
-    private static Dictionary<string, object?> ObterArgumentoDaFila(string fila, Dictionary<string, ComandoRabbit> comandos)
+    private static Dictionary<string, object> ObterArgumentoDaFila(string fila, Dictionary<string, ComandoRabbit> comandos)
     {
-        var args = new Dictionary<string, object?>
+        var args = new Dictionary<string, object>
             { { "x-dead-letter-exchange", ExchangeRabbit.NovaSondagemDeadLetter } };
 
-        if (comandos.TryGetValue(fila, out ComandoRabbit? value) && value.ModeLazy)
+        if (comandos.TryGetValue(fila, out ComandoRabbit value) && value.ModeLazy)
             args.Add("x-queue-mode", "lazy");
 
         return args;
     }
 
-    private static Dictionary<string, object?> ObterArgumentoDaFilaDeadLetter(string fila, Dictionary<string, ComandoRabbit> comandos)
+    private static Dictionary<string, object> ObterArgumentoDaFilaDeadLetter(string fila, Dictionary<string, ComandoRabbit> comandos)
     {
-        var argsDlq = new Dictionary<string, object?>();
-        var ttl = comandos.TryGetValue(fila, out ComandoRabbit? value) ? value.Ttl : ExchangeRabbit.NovaSondagemDeadLetterTtl_3;
+        var argsDlq = new Dictionary<string, object>();
+        var ttl = comandos.TryGetValue(fila, out ComandoRabbit value) ? value.Ttl : ExchangeRabbit.NovaSondagemDeadLetterTtl_3;
 
         argsDlq.Add("x-dead-letter-exchange", ExchangeRabbit.NovaSondagem);
         argsDlq.Add("x-message-ttl", ttl);

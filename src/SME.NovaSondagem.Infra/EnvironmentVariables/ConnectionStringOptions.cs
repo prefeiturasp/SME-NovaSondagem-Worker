@@ -1,18 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace SME.NovaSondagem.Infra.EnvironmentVariables;
 
-namespace SME.NovaSondagem.Infra.EnvironmentVariables
+public class ConnectionStringOptions
 {
-    public class ConnectionStringOptions
-    {
-        public static string Secao => "ConnectionStrings";
-        public string SondagemConnection { get; set; }
-        public string SGP_PostgresConsultas { get; set; }
-        public string Eol_Postgres { get; set; }
-        public string Eol_SQLServer { get; set; }
-        public string CoreSSO { get; set; }
-    }
+    public const string Secao = "ConnectionStrings";
+    public string SondagemConnection { get; set; } = string.Empty;
+    public string SGP_PostgresConsultas { get; set; } = string.Empty;
+    public string Eol_Postgres { get; set; } = string.Empty;
+    public string Eol_SQLServer { get; set; } = string.Empty;
+    public string CoreSSO { get; set; } = string.Empty;
 }
