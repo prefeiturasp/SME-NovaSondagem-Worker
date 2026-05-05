@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SME.NovaSondagem.Dados.Interfaces.Postgres;
 using SME.NovaSondagem.Infra.Interfaces;
+using SME.NovaSondagem.IoC;
 using SME.NovaSondagem.IoC.Extensions;
 using Xunit;
 using Assert = Xunit.Assert;
@@ -26,6 +28,11 @@ public class RegistraDependenciasTeste
                 ["RabbitLog:VirtualHost"] = "/",
                 ["Telemetria:ApplicationInsights"] = "false",
                 ["Telemetria:Apm"] = "false",
+                ["ConnectionStrings:SondagemConnection"] = "Host=localhost;Database=sondagem;",
+                ["ConnectionStrings:SGP_PostgresConsultas"] = "Host=localhost;Database=sgp;",
+                ["ConnectionStrings:Eol_Postgres"] = "Host=localhost;Database=eol;",
+                ["ConnectionStrings:Eol_SQLServer"] = "Server=localhost;Database=eol;",
+                ["ConnectionStrings:CoreSSO"] = "Server=localhost;Database=coresso;",
                 ["UrlApiSondagem"] = "https://localhost",
                 ["ApiKeySondagemApi"] = "chave-sondagem",
                 ["UrlApiEOL"] = "https://localhost",
@@ -35,6 +42,7 @@ public class RegistraDependenciasTeste
 
         var services = new ServiceCollection();
 
+        ConfigureServices.ConfigurarConexoes(services, configuracao);
         RegistraDependencias.Registrar(services, configuracao);
 
         var provider = services.BuildServiceProvider();
@@ -42,6 +50,8 @@ public class RegistraDependenciasTeste
         Assert.NotNull(provider.GetService<IServicoTelemetria>());
         Assert.NotNull(provider.GetService<IServicoLog>());
         Assert.NotNull(provider.GetService<IServicoMensageria>());
+        Assert.NotNull(provider.GetService<IRepositorioRacaCor>());
+        Assert.NotNull(provider.GetService<IRepositorioGeneroSexo>());
         Assert.NotNull(provider.GetService<IHttpClientFactory>());
     }
 }

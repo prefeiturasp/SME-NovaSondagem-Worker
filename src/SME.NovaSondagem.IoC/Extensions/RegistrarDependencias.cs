@@ -2,6 +2,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using SME.NovaSondagem.Dados.Interfaces.Postgres;
+using SME.NovaSondagem.Dados.Repositories.Postgres;
 using SME.NovaSondagem.Infra.EnvironmentVariables;
 using SME.NovaSondagem.Infra.Interfaces;
 using SME.NovaSondagem.Infra.Services;
@@ -33,6 +35,8 @@ public static class RegistraDependencias
         services.TryAddScoped<IServicoTelemetria, ServicoTelemetria>();
         services.TryAddScoped<IServicoLog, ServicoLog>();
         services.TryAddSingleton<IServicoMensageria, ServicoMensageria>();
+        services.TryAddScoped<IRepositorioRacaCor, RepositorioRacaCor>();
+        services.TryAddScoped<IRepositorioGeneroSexo, RepositorioGeneroSexo>();
         services.AddHttpClient();
         services.AdicionarHttpClients(configuration);
     }

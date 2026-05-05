@@ -1,5 +1,5 @@
 ﻿using Dommel;
-using Microsoft.Data.SqlClient;
+using SME.NovaSondagem.Dados.Interfaces;
 using Npgsql;
 using SME.NovaSondagem.Dominio.Entities;
 using SME.NovaSondagem.Infra.EnvironmentVariables;
@@ -7,7 +7,7 @@ using System.Data;
 
 namespace SME.NovaSondagem.Dados.Repositories;
 
-public abstract class RepositorioBase<T> where T : EntidadeBase
+public abstract class RepositorioBase<T> : IRepositorioBase<T> where T : EntidadeBase
 {
     private readonly ConnectionStringOptions connectionStrings;
 
@@ -35,34 +35,6 @@ public abstract class RepositorioBase<T> where T : EntidadeBase
             conexao.Close();
             conexao.Dispose();
         }
-    }
-
-    protected IDbConnection ObterConexaoSgp()
-    {
-        var conexao = new NpgsqlConnection(connectionStrings.SGP_PostgresConsultas);
-        conexao.Open();
-        return conexao;
-    }
-
-    protected IDbConnection ObterConexaoEolPostgres()
-    {
-        var conexao = new NpgsqlConnection(connectionStrings.Eol_Postgres);
-        conexao.Open();
-        return conexao;
-    }
-
-    protected virtual IDbConnection ObterConexaoEolSqlServer()
-    {
-        var conexao = new SqlConnection(connectionStrings.Eol_SQLServer);
-        conexao.Open();
-        return conexao;
-    }
-
-    protected virtual IDbConnection ObterConexaoCoreSSO()
-    {
-        var conexao = new SqlConnection(connectionStrings.CoreSSO);
-        conexao.Open();
-        return conexao;
     }
 
     public virtual async Task<T> ObterPorIdAsync(long id)
