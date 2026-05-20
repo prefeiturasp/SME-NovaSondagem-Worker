@@ -18,8 +18,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-RUN addgroup --system appgroup \
-    && adduser --system --ingroup appgroup appuser \
+RUN groupadd -r appgroup \
+    && useradd -r -g appgroup appuser \
     && chown -R appuser:appgroup /app
 
 USER appuser
