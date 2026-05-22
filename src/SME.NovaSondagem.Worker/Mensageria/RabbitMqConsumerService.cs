@@ -32,7 +32,6 @@ public class RabbitMqConsumerService : BackgroundService
         _rabbitMqMessageProcessor = rabbitMqMessageProcessor ?? throw new ArgumentNullException(nameof(rabbitMqMessageProcessor));
 
         _comandos = [];
-        RegistrarUseCases();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -43,11 +42,6 @@ public class RabbitMqConsumerService : BackgroundService
         await _rabbitMqSetupService.SetupExchangesAndQueuesAsync(channel, _comandos);
 
         await InicializaConsumerAsync(channel, stoppingToken);
-    }
-
-    private static void RegistrarUseCases()
-    {
-        throw new NotSupportedException();
     }
 
     private async Task InicializaConsumerAsync(IChannel channel, CancellationToken stoppingToken)
